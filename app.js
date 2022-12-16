@@ -1,10 +1,13 @@
 //jshint esversion:6
+require('dotenv').config()
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs")
 const mongoose = require("mongoose");
 const encrypt = require("mongoose-encryption")
 const app = express();
+
+console.log(process.env.SECRET);
 
 mongoose.set('strictQuery', true);
 app.set('view engine', 'ejs');
@@ -36,8 +39,7 @@ const options = {
       password: String
     });
 
-    const secret = "Thisisanewgoodnicesecret";
-      userSchema.plugin(encrypt, { secret: secret, encryptedFields: ["password", "email"] });
+      userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password", "email"] });
       // Always put the plugin above the collection which is User.
     const User = mongoose.model("User", userSchema)
 
