@@ -1,25 +1,34 @@
 //jshint esversion:6
-require('dotenv').config()
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const ejs = require("ejs")
+const ejs = require("ejs");
 const mongoose = require("mongoose");
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
+const session = require("express-session");
+const passport = require("passport")
+const passportLocalMongoose = require("passport-local-mongoose");
+// const bcrypt = require('bcrypt');
+// const saltRounds = 10;
 // const md5 = require('md5');
 // const encrypt = require("mongoose-encryption")
 
 const app = express();
 
-console.log(process.env.SECRET);
-
 mongoose.set('strictQuery', true);
 app.set('view engine', 'ejs');
 
 app.use(express.static("public"));
-app.use(bodyParser.urlencoded({extended:true}))
+app.use(bodyParser.urlencoded({extended:true}));
 
-
+// This should be just above the mongooseconnect consts
+//   and just below the bodyparser app.use
+app.use(session({
+  secret: "My secrets app.",
+  resave: false,
+  saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
 const uri = 'mongodb://localhost:27017/userDB';
 
@@ -32,21 +41,32 @@ const options = {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     family: 4
-}
+};
     mongoose.connect(uri, options, (err, db) => {
       if (err) console.error(err);
       else console.log("Connected")
-    })
+    });
+
 
     const userSchema = new mongoose.Schema({
       email: String,
       password: String
     });
 
-      // userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] });
+    userSchema.plugin(passportLocalMongoose);
 
+const User = mongoose.model("User", userSchema);
+
+passport.use(User.createStrategy());
+        // Serialise means to create cookie and deserialize means to use the cookie to
+        // authenticate the details
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+      // userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] });
       // Always put the plugin above the collection which is User.
-    const User = mongoose.model("User", userSchema)
+
+
 
 app.get("/login", function(req, res) {
   res.render("login");
@@ -61,47 +81,47 @@ app.get("/", function(req, res) {
 });
 app.post("/register", function (req, res) {
 
-  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
-
-      const newUser = new User({
-        email: req.body.username,
-        password: hash
-      });
-
-      newUser.save(function (err) {
-        if (err) {
-          console.log(err);
-        }else {
+  // bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+  //
+  //     const newUser = new User({
+  //       email: req.body.username,
+  //       password: hash
+  //     });
+  //
+  //     newUser.save(function (err) {
+  //       if (err) {
+  //         console.log(err);
+  //       }else {
           res.render("secrets")
-        };
-      });
-    });
+  //       };
+  //     });
+  //   });
 
 
 });
 
 app.post("/login", function (req, res) {
-  const username = req.body.username;
-  const password = req.body.password;
-
-  User.findOne({email: username}, function(err, foundUser){
-    if(err){
-      console.log(err);
-    }else{
-      // if(foundUser.password === password){
-      //   res.render("secrets")
-      // }
-      if(foundUser){
-        bcrypt.compare(password, foundUser.password, function(err, result) {
-          if (result === true) {
+  // const username = req.body.username;
+  // const password = req.body.password;
+  //
+  // User.findOne({email: username}, function(err, foundUser){
+  //   if(err){
+  //     console.log(err);
+  //   }else{
+  //     // if(foundUser.password === password){
+  //     //   res.render("secrets")
+  //     // }
+  //     if(foundUser){
+  //       bcrypt.compare(password, foundUser.password, function(err, result) {
+  //         if (result === true) {
             res.render("secrets")
-          }
-        });
-
-      }
-
-    }
-  });
+  //         }
+  //       });
+  //
+  //     }
+  //
+  //   }
+  // });
 
 });
 
